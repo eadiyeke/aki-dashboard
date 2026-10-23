@@ -1,0 +1,11 @@
+case_id,feature_label,value
+case-01,Mean arterial pressure,28
+case-01,Blood urea nitrogen,23
+case-01,Heart rate,15
+case-01,Lactate,8
+case-01,Temperature,5
+case-02,Mean arterial pressure,34
+case-02,Lactate,26
+case-02,Urine output,19
+case-02,Heart rate,11
+case-02,Blood urea nitrogen,6

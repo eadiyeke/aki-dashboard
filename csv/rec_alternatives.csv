@@ -1,0 +1,7 @@
+case_id,alt_label,score
+case-01,"0.25 mcg/kg/min vasopressor, 75 mL/4h fluids",72
+case-01,"No vasopressor, no IV fluids",60
+case-01,"No vasopressor, 75 mL/4h fluids",22
+case-02,"0.20 mcg/kg/min vasopressor, 150 mL/4h fluids",68
+case-02,"0.30 mcg/kg/min vasopressor, no fluids",55
+case-02,"Add vasopressin, 75 mL/4h fluids",41

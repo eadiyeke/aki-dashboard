@@ -1,0 +1,7 @@
+case_id,option_label,pct
+case-01,"0.1 mcg/kg/min vasopressor, 75 mL/4h fluids",52
+case-01,"No vasopressor, 75 mL/4h fluids",28
+case-01,"No vasopressor, 25 mL/4h fluids",20
+case-02,"0.25 mcg/kg/min vasopressor, 75 mL/4h fluids",44
+case-02,"0.20 mcg/kg/min vasopressor, 150 mL/4h fluids",33
+case-02,"Add vasopressin, fluid restrict",23

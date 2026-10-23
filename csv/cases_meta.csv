@@ -1,0 +1,3 @@
+case_id,name,age,sex,weight_kg,bmi,admission_diagnosis,comorbidities,charlson_index,aki_stage,aki_criteria,baseline_creatinine
+case-01,Marcus Delgado,64,Male,82,27.4,Pneumonia,Chronic Kidney Disease (Stage G4);Diabetes,3,2,Serum Creatinine ×2.8 from baseline,1.1
+case-02,Helen Park,71,Female,68,24.1,Septic shock (urinary source),Hypertension;Heart failure (HFrEF),4,3,Serum Creatinine ×3.1 from baseline,0.9
