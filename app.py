@@ -90,8 +90,15 @@ def get_content():
 @st.cache_resource(show_spinner="Connecting to response storage...")
 def get_store():
     sa, sheet_id = _secret("gcp_service_account"), _secret("sheet_id")
+    if _secret("gcp_json"):  # whole JSON key file pasted as one block (preferred)
+        sa = json.loads(_secret("gcp_json"))
     if sa and sheet_id:
-        return GoogleSheetStore(sa, sheet_id, _secret("worksheet"))
+        sa = {k: (v.strip() if isinstance(v, str) and k != "private_key" else v) for k, v in dict(sa).items()}
+        try:
+            return GoogleSheetStore(sa, sheet_id, _secret("worksheet"))
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"{e} | app is using client_email='{sa.get('client_email')}', "
+                               f"project_id='{sa.get('project_id')}', sheet_id='{sheet_id}'") from e
     return LocalCsvStore(os.path.join(HERE, "data", "decisions.csv"))
 
 
