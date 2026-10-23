@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+/*__STYLES__*/
+/* Embedded in Streamlit: the decision bar lives below this frame, so no footer row here. */
+.app{grid-template-rows:52px 1fr;}
+.ai-panel > *{flex-shrink:0;}
+main.center, .chart-box{min-width:0;}
+</style>
+<script>/*__CHARTJS__*/</script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">AKI MANAGEMENT DASHBOARD</div>
+      <div class="time-ctrl">
+        <small>AKI ONSET</small>
+        <input type="range" id="timeSlider" min="1" max="7" value="7" step="1">
+        <span id="timeLabel">Now</span>
+      </div>
+      <div class="header-right">
+        <span class="progress" id="progressLabel"></span>
+        <span id="whoLabel"></span>
+      </div>
+    </header>
+
+    <div class="dashboard ai-collapsed" id="dash">
+      <aside id="sidebar"></aside>
+
+      <main class="center">
+        <div class="chart-box">
+          <div class="chart-header"><h3>Laboratory</h3>
+            <select id="labsSelect">
+              <option value="creatinine">Creatinine (mg/dL)</option>
+              <option value="bun">BUN (mg/dL)</option>
+              <option value="urine_output">Urine Output (mL/hr)</option>
+              <option value="lactate">Lactate (mmol/L)</option>
+            </select>
+          </div>
+          <div class="chart-container"><canvas id="labsChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-header"><h3>Vitals</h3>
+            <select id="vitalsSelect">
+              <option value="map">Mean Art. Pressure (mmHg)</option>
+              <option value="hr">Heart Rate (bpm)</option>
+              <option value="cvp">CVP (mmHg)</option>
+            </select>
+          </div>
+          <div class="chart-container"><canvas id="vitalsChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-header"><h3>IV Fluids (mL/4 hr)</h3></div>
+          <div class="chart-container"><canvas id="fluidChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-header"><h3>Vasopressors (mcg/kg/min)</h3></div>
+          <div class="chart-container"><canvas id="vasoChart"></canvas></div>
+        </div>
+        <div class="chart-box full-width">
+          <div class="chart-header"><h3>eGFR (mL/min/1.73 m²)</h3></div>
+          <div class="chart-container"><canvas id="egfrChart"></canvas></div>
+        </div>
+        <div class="disclaimer">
+          <svg class="disc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2a9d8f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <p><strong>AI Model Disclaimer:</strong> Recommendations shown in this study are
+          pre-generated examples for evaluation purposes and do not come from a live model.
+          This tool is intended to support, not replace, clinical judgment. Always verify
+          recommendations against the full clinical picture.</p>
+        </div>
+      </main>
+
+      <section class="ai-panel" id="aiPanel"></section>
+    </div>
+  </div>
+
+<script>/*__CHARTS_JS__*/</script>
+<script>
+(function () {
+  const DATA = /*__DATA__*/;
+  const $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function pill(label, value) {
+    return '<div class="pill"><div class="pill-label">' + label + '</div><div class="pill-value">' + value + '</div></div>';
+  }
+
+  // ---- header ----
+  $('progressLabel').textContent = 'Case ' + DATA.caseNumber + ' of ' + DATA.totalCases;
+  $('whoLabel').textContent = DATA.who;
+
+  // ---- sidebar ----
+  const c = DATA.case, p = c.patient;
+  $('sidebar').innerHTML =
+    pill('Patient', esc(p.name) + '<br><span class="muted">' + esc(p.age) + ' y/o &middot; ' + esc(p.sex) + '</span>') +
+    pill('Admission Diagnosis', esc(p.admission_diagnosis)) +
+    pill('Weight / BMI', esc(p.weight_kg) + ' kg &middot; BMI ' + esc(p.bmi)) +
+    pill('Comorbidities', esc((p.comorbidities || []).join(', ')) +
+         '<br><span class="muted">Charlson Index: ' + esc(p.charlson_index) + '</span>') +
+    '<div class="section-label" style="margin-top:6px;">Acute Kidney Injury</div>' +
+    pill('Stage ' + esc(c.aki.stage), esc(c.aki.criteria)) +
+    pill('Baseline Serum Creatinine', esc(c.aki.baseline_creatinine) + ' mg/dL');
+
+  const rec = DATA.rec;
+  if (rec) $('dash').classList.remove('ai-collapsed');
+
+  // ---- charts + time slider (display only) ----
+  Charts.init();
+  Charts.setCase(c);
+  const sl = $('timeSlider'), n = c.timeline.labels.length;
+  sl.min = 1; sl.max = n; sl.value = n;
+  sl.addEventListener('input', function () {
+    const to = Number(this.value) - 1;
+    Charts.setStep(to);
+    $('timeLabel').textContent = (to === n - 1) ? 'Now' : c.timeline.labels[to];
+  });
+  $('labsSelect').addEventListener('change', function () { Charts.renderCategory('labs'); });
+  $('vitalsSelect').addEventListener('change', function () { Charts.renderCategory('vitals'); });
+
+  // ---- AI panel: only present once the initial plan is saved ----
+  if (!rec) return;
+  function bars(items, valKey, color, suffix) {
+    const max = Math.max.apply(null, items.map(function (it) { return it[valKey]; }).concat([1]));
+    return items.map(function (it) {
+      const w = Math.round((it[valKey] / max) * 100);
+      return '<div class="bar-item"><div class="bar-label-row">' +
+        '<span class="bar-label-text">' + esc(it.label) + '</span>' +
+        '<span class="bar-label-val">' + esc(it[valKey]) + (suffix || '') + '</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + w + '%;background:' + color + '"></div></div></div>';
+    }).join('');
+  }
+  const feats = rec.features || [];
+  const fmax = Math.max.apply(null, feats.map(function (f) { return f.value; }).concat([1]));
+  $('aiPanel').innerHTML =
+    '<div class="tx-card"><div class="tx-card-header"><small>AI recommendation for the next 4 hours</small></div>' +
+    '<div class="tx-card-body">' +
+      '<div class="tx-row"><div class="tx-drug">Vasopressor: ' + esc(rec.vasopressor) + '</div></div>' +
+      '<div class="tx-row"><div class="tx-drug">IV fluid: ' + esc(rec.iv_fluid) + '</div></div>' +
+      (rec.note ? '<div class="tx-note">' + esc(rec.note) + '</div>' : '') +
+    '</div></div>' +
+    '<div class="panel-title">Feature Explanation</div>' +
+    '<div class="panel-sub">Top variables contributing to the recommendation.</div>' +
+    '<div>' + feats.map(function (f) {
+      const w = Math.round((f.value / fmax) * 100);
+      return '<div class="shap-item"><div class="shap-label-row"><span>' + esc(f.label) + '</span><span>' + esc(f.value) + '</span></div>' +
+        '<div class="shap-track"><div class="shap-fill" style="width:' + w + '%"></div></div></div>';
+    }).join('') + '</div>' +
+    '<div class="panel-title">Alternative Strategies</div>' +
+    '<div class="panel-sub">Estimated decision-quality scores for alternatives.</div>' +
+    '<div>' + bars(rec.alternatives || [], 'score', '#8A8AFF') + '</div>' +
+    '<div class="panel-title">Clinician Decisions in Similar States ' +
+      '<span style="color:var(--accent-teal);font-weight:400;">n=' + esc(rec.cohort_n) + '</span></div>' +
+    '<div class="panel-sub">Distribution across similar patient states.</div>' +
+    '<div>' + bars(rec.peers || [], 'pct', '#e9a84c') + '</div>';
+})();
+</script>
+</body>
+</html>
